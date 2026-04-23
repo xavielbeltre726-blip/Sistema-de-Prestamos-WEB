@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PrestaFlow - Sistema Profesional de Préstamos</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        :root {
+            --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            --color-text-primary: #1A1F36;
+            --color-text-secondary: #5A6A7D;
+            --color-text-tertiary: #8A99AA;
+            --color-background-primary: #FFFFFF;
+            --color-background-secondary: #F8F9FC;
+            --color-background-tertiary: #F0F2F8;
+            --color-border-primary: #E6E9F0;
+            --color-border-secondary: #DCE0E8;
+            --color-border-tertiary: #EBEEF2;
+            --color-success: #1D9E75;
+            --color-success-light: #E1F5EE;
+            --color-warning: #F5A623;
+            --color-warning-light: #FAEEDA;
+            --color-danger: #D85A30;
+            --color-danger-light: #FAECE7;
+            --color-info: #3B82F6;
+            --color-info-light: #EFF6FF;
+            --border-radius-sm: 6px;
+            --border-radius-md: 10px;
+            --border-radius-lg: 16px;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+        }
+        
+        [data-theme="dark"] {
+            --color-text-primary: #F0F2F8;
+            --color-text-secondary: #9CA3AF;
+            --color-text-tertiary: #6B7280;
+            --color-background-primary: #1F2937;
+            --color-background-secondary: #111827;
+            --color-background-tertiary: #374151;
+            --color-border-primary: #374151;
+            --color-border-secondary: #4B5563;
+            --color-border-tertiary: #2D3748;
+        }
+        
+        body {
+            background: var(--color-background-tertiary);
+            padding: 20px;
+            font-family: var(--font-sans);
+            transition: background 0.3s;
+        }
+        
+        .app {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: var(--color-background-primary);
+            border-radius: var(--border-radius-lg);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+        }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .header-left h1 {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--color-text-primary), var(--color-success));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header-left span {
+            font-size: 13px;
+            color: var(--color-text-secondary);
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .theme-toggle, .export-btn {
+            background: var(--color-background-secondary);
+            border: 0.5px solid var(--color-border-secondary);
+            border-radius: var(--border-radius-md);
+            padding: 7px 14px;
+            font-size: 13px;
+            cursor: pointer;
+            color: var(--color-text-primary);
+            font-family: var(--font-sans);
+            transition: all 0.2s;
+        }
+        
+        .theme-toggle:hover, .export-btn:hover {
+            background: var(--color-background-tertiary);
+        }
+        
+        .new-loan-btn {
+            background: linear-gradient(135deg, var(--color-success), #0F6E56);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius-md);
+            padding: 8px 18px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: var(--font-sans);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .new-loan-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 12px;
+            margin-bottom: 1.5rem;
+        }
+        
+        .metric {
+            background: var(--color-background-secondary);
+            border-radius: var(--border-radius-md);
+            padding: 1rem;
+            border: 0.5px solid var(--color-border-tertiary);
+            transition: transform 0.2s;
+        }
+        
+        .metric:hover {
+            transform: translateY(-2px);
+        }
+        
+        .metric .label {
+            font-size: 12px;
+            color: var(--color-text-secondary);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        
+        .metric .value {
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--color-text-primary);
+        }
+        
+        .metric .sub {
+            font-size: 12px;
+            color: var(--color-text-secondary);
+            margin-top: 4px;
+        }
+        
+        .metric .up { color: var(--color-success); }
+        .metric .down { color: var(--color-danger); }
+        
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 1.25rem;
+            border-bottom: 0.5px solid var(--color-border-tertiary);
+            flex-wrap: wrap;
+        }
+        
+        .tab {
+            padding: 8px 18px;
+            font-size: 13px;
+            cursor: pointer;
+            color: var(--color-text-secondary);
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+            background: none;
+            border-top: none;
+            border-left: none;
+            border-right: none;
+            font-family: var(--font-sans);
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        
+        .tab.active {
+            color: var(--color-success);
+            border-bottom-color: var(--color-success);
+        }
+        
+        .tab:hover:not(.active) {
+            color: var(--color-text-primary);
+        }
+        
+        .panel {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+        
+        .panel.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .chart-card {
+            background: var(--color-background-secondary);
+            border-radius: var(--border-radius-md);
+            padding: 1rem;
+            border: 0.5px solid var(--color-border-tertiary);
+        }
+        
+        .chart-card h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--color-text-primary);
+        }
+        
+        canvas {
+            max-height: 250px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        
+        th {
+            text-align: left;
+            padding: 10px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            border-bottom: 0.5px solid var(--color-border-tertiary);
+        }
+        
+        td {
+            padding: 12px 12px;
+            border-bottom: 0.5px solid var(--color-border-tertiary);
+            color: var(--color-text-primary);
+            vertical-align: middle;
+        }
+        
+        tr:hover td {
+            background: var(--color-background-secondary);
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .badge-active { background: var(--color-success-light); color: #0F6E56; }
+        .badge-late { background: var(--color-danger-light); color: #993C1D; }
+        .badge-pending { background: var(--color-warning-light); color: #854F0B; }
+        .badge-closed { background: var(--color-background-tertiary); color: var(--color-text-secondary); }
+        
+        .action-btn {
+            background: none;
+            border: 0.5px solid var(--color-border-secondary);
+            border-radius: var(--border-radius-sm);
+            padding: 5px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            color: var(--color-text-primary);
+            margin: 2px;
+            font-family: var(--font-sans);
+            transition: all 0.2s;
+        }
+        
+        .action-btn:hover {
+            background: var(--color-background-tertiary);
+        }
+        
+        .action-btn.danger:hover {
+            background: var(--color-danger-light);
+            border-color: var(--color-danger);
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 14px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .form-group.full {
+            grid-column: 1 / -1;
+        }
+        
+        .form-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        
+        .form-group input, .form-group select {
+            font-size: 14px;
+            padding: 9px 12px;
+            border: 0.5px solid var(--color-border-secondary);
+            border-radius: var(--border-radius-sm);
+            font-family: var(--font-sans);
+            background: var(--color-background-primary);
+            color: var(--color-text-primary);
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: var(--color-success);
+        }
+        
+        .result-box {
+            background: linear-gradient(135deg, var(--color-background-secondary), var(--color-background-tertiary));
+            border-radius: var(--border-radius-md);
+            padding: 1.25rem;
+            margin-top: 1rem;
+        }
+        
+        .result-box .r-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-top: 0.75rem;
+        }
+        
+        .result-box .r-item .r-label {
+            font-size: 12px;
+            color: var(--color-text-secondary);
+        }
+        
+        .result-box .r-item .r-val {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--color-text-primary);
+            margin-top: 4px;
+        }
+        
+        .submit-btn {
+            width: 100%;
+            margin-top: 1rem;
+            background: linear-gradient(135deg, var(--color-success), #0F6E56);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius-md);
+            padding: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: var(--font-sans);
+            transition: all 0.2s;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 1.25rem;
+            flex-wrap: wrap;
+        }
+        
+        .search-bar input {
+            flex: 1;
+            font-size: 13px;
+            padding: 9px 14px;
+            border: 0.5px solid var(--color-border-secondary);
+            border-radius: var(--border-radius-sm);
+            background: var(--color-background-primary);
+            color: var(--color-text-primary);
+        }
+        
+        .search-bar select {
+            font-size: 13px;
+            width: 160px;
+            padding: 9px 12px;
+            border: 0.5px solid var(--color-border-secondary);
+            border-radius: var(--border-radius-sm);
+            background: var(--color-background-primary);
+            color: var(--color-text-primary);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--color-text-secondary);
+            font-size: 14px;
+        }
+        
+        .alert {
+            background: var(--color-warning-light);
+            border: 0.5px solid #FAC775;
+            border-radius: var(--border-radius-md);
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            font-size: 13px;
+            color: #854F0B;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .alert-close {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: #854F0B;
+        }
+        
+        .progress-bar-bg {
+            background: var(--color-border-tertiary);
+            border-radius: 4px;
+            height: 6px;
+            margin-top: 6px;
+        }
+        
+        .progress-bar {
+            background: linear-gradient(90deg, var(--color-success), #0F6E56);
+            height: 6px;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal-overlay.open {
+            display: flex;
+        }
+        
+        .modal {
+            background: var(--color-background-primary);
+            border-radius: var(--border-radius-lg);
+            padding: 1.75rem;
+            width: 100%;
+            max-width: 520px;
+            border: 0.5px solid var(--color-border-tertiary);
+            box-shadow: var(--shadow-lg);
+            animation: fadeIn 0.2s;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.25rem;
+        }
+        
+        .modal-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            color: var(--color-text-secondary);
+            line-height: 1;
+        }
+        
+        .amort-table-wrap {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 0.5px solid var(--color-border-tertiary);
+            border-radius: var(--border-radius-md);
+        }
+        
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--color-success);
+            color: white;
+            padding: 12px 20px;
+            border-radius: var(--border-radius-md);
+            font-size: 13px;
+            z-index: 2000;
+            animation: slideIn 0.3s;
+            box-shadow: var(--shadow-lg);
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @media (max-width: 768px) {
+            .app { padding: 1rem; }
+            .dashboard-grid { grid-template-columns: 1fr; }
+            .metrics { grid-template-columns: 1fr 1fr; }
+            td, th { padding: 8px; }
+            .tab { padding: 6px 12px; font-size: 12px; }
+        }
+        
+        @media (max-width: 480px) {
+            .metrics { grid-template-columns: 1fr; }
+            .header { flex-direction: column; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+<div class="app">
+    <div class="header">
+        <div class="header-left">
+            <h1>💰 PrestaFlow</h1>
+            <span>Sistema profesional de gestión de préstamos</span>
+        </div>
+        <div class="header-actions">
+            <button class="theme-toggle" onclick="toggleTheme()">🌙 Modo oscuro</button>
+            <button class="export-btn" onclick="exportToExcel()">📊 Exportar Excel</button>
+            <button class="new-loan-btn" onclick="openModal()">+ Nuevo préstamo</button>
+        </div>
+    </div>
+    
+    <div class="metrics" id="metricsContainer"></div>
+    
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('dashboard')">📈 Dashboard</button>
+        <button class="tab" onclick="switchTab('loans')">📋 Préstamos</button>
+        <button class="tab" onclick="switchTab('simulator')">🧮 Simulador</button>
+        <button class="tab" onclick="switchTab('schedule')">📅 Tabla amortización</button>
+    </div>
+    
+    <div id="dashboard" class="panel active">
+        <div class="dashboard-grid">
+            <div class="chart-card">
+                <h3>📊 Distribución por estado</h3>
+                <canvas id="statusChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>📈 Evolución de cartera (últimos 6 meses)</h3>
+                <canvas id="portfolioChart"></canvas>
+            </div>
+        </div>
+        <div class="alert" id="lateAlert" style="display:none;"></div>
+    </div>
+    
+    <div id="loans" class="panel">
+        <div class="search-bar">
+            <input type="text" placeholder="🔍 Buscar por cliente, ID o teléfono..." id="searchInput" oninput="filterLoans()" />
+            <select id="statusFilter" onchange="filterLoans()">
+                <option value="">📌 Todos los estados</option>
+                <option value="active">✅ Activo</option>
+                <option value="late">⚠️ Vencido</option>
+                <option value="pending">⏳ Pendiente</option>
+                <option value="closed">🔒 Cerrado</option>
+            </select>
+        </div>
+        <table>
+            <thead>
+                <tr><th>ID</th><th>Cliente</th><th>Teléfono</th><th>Monto</th><th>Cuota</th><th>Progreso</th><th>Estado</th><th>Acciones</th></tr>
+            </thead>
+            <tbody id="loansBody"></tbody>
+        </table>
+    </div>
+    
+    <div id="simulator" class="panel">
+        <div class="form-grid">
+            <div class="form-group"><label>💰 Monto del préstamo</label><input type="number" id="simAmount" value="50000" min="100" oninput="calcSimulation()" /></div>
+            <div class="form-group"><label>📈 Tasa anual (%)</label><input type="number" id="simRate" value="18" step="0.5" min="0" oninput="calcSimulation()" /></div>
+            <div class="form-group"><label>📅 Plazo (meses)</label><input type="number" id="simMonths" value="24" min="1" max="360" oninput="calcSimulation()" /></div>
+            <div class="form-group"><label>🔄 Tipo de cuota</label><select id="simType" onchange="calcSimulation()"><option value="frances">Sistema francés (cuota fija)</option><option value="aleman">Sistema alemán (capital fijo)</option></select></div>
+        </div>
+        <div class="result-box"><div class="section-title">📊 Resumen del préstamo</div><div class="r-grid" id="simGrid"></div></div>
+    </div>
+    
+    <div id="schedule" class="panel">
+        <div class="form-grid" style="margin-bottom:1rem;">
+            <div class="form-group"><label>💰 Monto</label><input type="number" id="amAmount" value="30000" oninput="buildAmortTable()" /></div>
+            <div class="form-group"><label>📈 Tasa anual (%)</label><input type="number" id="amRate" value="15" step="0.5" oninput="buildAmortTable()" /></div>
+            <div class="form-group"><label>📅 Plazo (meses)</label><input type="number" id="amMonths" value="12" min="1" max="360" oninput="buildAmortTable()" /></div>
+            <div class="form-group"><label>🔄 Tipo</label><select id="amType" onchange="buildAmortTable()"><option value="frances">Francés</option><option value="aleman">Alemán</option></select></div>
+        </div>
+        <div class="amort-table-wrap">
+            <table><thead><tr><th>#</th><th>Capital</th><th>Interés</th><th>Cuota</th><th>Saldo</th></tr></thead><tbody id="amortBody"></tbody></table>
+        </div>
+    </div>
+    
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header"><h2>➕ Nuevo préstamo</h2><button class="close-btn" onclick="closeModal()">×</button></div>
+            <div class="form-grid">
+                <div class="form-group full"><label>👤 Cliente</label><input type="text" id="newClient" placeholder="Ej: Ana García" /></div>
+                <div class="form-group"><label>📞 Teléfono</label><input type="tel" id="newPhone" placeholder="Ej: 809-555-1234" /></div>
+                <div class="form-group"><label>💰 Monto</label><input type="number" id="newAmount" placeholder="10000" /></div>
+                <div class="form-group"><label>📈 Tasa (%)</label><input type="number" id="newRate" placeholder="18" /></div>
+                <div class="form-group"><label>📅 Plazo (meses)</label><input type="number" id="newMonths" placeholder="24" /></div>
+                <div class="form-group"><label>📌 Estado</label><select id="newStatus"><option value="active">Activo</option><option value="pending">Pendiente</option></select></div>
+            </div>
+            <button class="submit-btn" onclick="addLoan()">✅ Registrar préstamo</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Datos iniciales con teléfonos
+    let loans = [
+        {id:'P-001',client:'Carlos Ramírez',phone:'809-555-0101',amount:80000,rate:15,months:36,paid:18,status:'active'},
+        {id:'P-002',client:'María López',phone:'829-555-0202',amount:25000,rate:18,months:24,paid:24,status:'closed'},
+        {id:'P-003',client:'Juan Pérez',phone:'849-555-0303',amount:40000,rate:20,months:12,paid:14,status:'late'},
+        {id:'P-004',client:'Ana Gómez',phone:'809-555-0404',amount:15000,rate:16,months:18,paid:3,status:'active'},
+        {id:'P-005',client:'Luis Torres',phone:'829-555-0505',amount:60000,rate:14,months:48,paid:10,status:'active'},
+        {id:'P-006',client:'Sandra Díaz',phone:'849-555-0606',amount:10000,rate:22,months:12,paid:11,status:'late'},
+        {id:'P-007',client:'Pedro Mora',phone:'809-555-0707',amount:30000,rate:17,months:24,paid:0,status:'pending'},
+    ];
+    
+    let charts = {};
+    let currentTheme = 'light';
+    
+    const statusLabel = {active:'Activo',late:'Vencido',pending:'Pendiente',closed:'Cerrado'};
+    const statusClass = {active:'badge-active',late:'badge-late',pending:'badge-pending',closed:'badge-closed'};
+    
+    function fmt(n){ return '$' + Math.round(n).toLocaleString('es-DO'); }
+    function fmtCompact(n){ return n >= 1000000 ? '$' + (n/1000000).toFixed(1) + 'M' : n >= 1000 ? '$' + (n/1000).toFixed(0) + 'K' : '$' + n; }
+    
+    function monthlyPayment(P,r,n){ if(r===0) return P/n; const mr=r/12/100; return P*(mr*Math.pow(1+mr,n))/(Math.pow(1+mr,n)-1); }
+    
+    function showNotification(msg, isError = false) {
+        const notif = document.createElement('div');
+        notif.className = 'notification';
+        notif.textContent = msg;
+        notif.style.background = isError ? 'var(--color-danger)' : 'var(--color-success)';
+        document.body.appendChild(notif);
+        setTimeout(() => notif.remove(), 3000);
+    }
+    
+    function toggleTheme() {
+        currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+        document.body.setAttribute('data-theme', currentTheme);
+        document.querySelector('.theme-toggle').textContent = currentTheme === 'light' ? '🌙 Modo oscuro' : '☀️ Modo claro';
+        updateCharts();
+    }
+    
+    function updateMetrics() {
+        const activeLoans = loans.filter(l => l.status === 'active');
+        const lateLoans = loans.filter(l => l.status === 'late');
+        const totalActive = activeLoans.reduce((sum, l) => sum + l.amount, 0);
+        const totalPaid = loans.reduce((sum, l) => sum + (l.paid / l.months) * l.amount, 0);
+        const totalLoans = loans.length;
+        const totalPortfolio = loans.reduce((sum, l) => sum + l.amount, 0);
+        
+        document.getElementById('metricsContainer').innerHTML = `
+            <div class="metric"><div class="label">📊 Cartera activa</div><div class="value">${fmt(totalActive)}</div><div class="sub up">↑ 12% vs mes ant.</div></div>
+            <div class="metric"><div class="label">📋 Préstamos totales</div><div class="value">${totalLoans}</div><div class="sub">${activeLoans.length} activos · ${lateLoans.length} vencidos</div></div>
+            <div class="metric"><div class="label">💰 Cobrado YTD</div><div class="value">${fmt(totalPaid)}</div><div class="sub up">↑ 5.3% este mes</div></div>
+            <div class="metric"><div class="label">⚠️ Tasa mora</div><div class="value">${totalLoans ? Math.round((lateLoans.length / totalLoans) * 100) : 0}%</div><div class="sub">${lateLoans.length} préstamos vencidos</div></div>
+        `;
+        
+        const hasLate = lateLoans.length > 0;
+        const lateAlert = document.getElementById('lateAlert');
+        if(hasLate) {
+            lateAlert.style.display = 'flex';
+            lateAlert.innerHTML = `⚠️ ${lateLoans.length} préstamo(s) tienen cuotas vencidas. Revise el seguimiento. <button class="alert-close" onclick="this.parentElement.style.display='none'">×</button>`;
+        } else {
+            lateAlert.style.display = 'none';
+        }
+        
+        updateCharts();
+    }
+    
+    function updateCharts() {
+        const statusCount = { active:0, late:0, pending:0, closed:0 };
+        loans.forEach(l => statusCount[l.status]++);
+        
+        if(charts.statusChart) charts.statusChart.destroy();
+        const statusCtx = document.getElementById('statusChart').getContext('2d');
+        charts.statusChart = new Chart(statusCtx, {
+            type: 'doughnut',
+            data: { labels: ['Activos', 'Vencidos', 'Pendientes', 'Cerrados'], datasets: [{ data: [statusCount.active, statusCount.late, statusCount.pending, statusCount.closed], backgroundColor: ['#1D9E75', '#D85A30', '#F5A623', '#9CA3AF'], borderWidth: 0 }] },
+            options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom' } } }
+        });
+        
+        const monthlyData = [18500, 19200, 17800, 19800, 20500, loans.reduce((sum,l)=>sum+(l.paid/l.months)*l.amount,0)];
+        if(charts.portfolioChart) charts.portfolioChart.destroy();
+        const portfolioCtx = document.getElementById('portfolioChart').getContext('2d');
+        charts.portfolioChart = new Chart(portfolioCtx, {
+            type: 'line',
+            data: { labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'], datasets: [{ label: 'Cobranza mensual', data: monthlyData, borderColor: '#1D9E75', backgroundColor: 'rgba(29,158,117,0.1)', fill: true, tension: 0.4 }] },
+            options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'top' } } }
+        });
+    }
+    
+    function recordPayment(loanId) {
+        const loan = loans.find(l => l.id === loanId);
+        if(!loan) return;
+        if(loan.status === 'closed') { showNotification('Este préstamo ya está cerrado.', true); return; }
+        if(loan.paid >= loan.months) { loan.status = 'closed'; updateAll(); showNotification(`✅ Préstamo de ${loan.client} completado y cerrado.`); return; }
+        
+        loan.paid++;
+        if(loan.paid >= loan.months) loan.status = 'closed';
+        else if(loan.status === 'late') loan.status = 'active';
+        
+        updateAll();
+        showNotification(`💰 Pago registrado para ${loan.client}. Cuota ${loan.paid}/${loan.months}`);
+    }
+    
+    function editLoan(loanId) {
+        const loan = loans.find(l => l.id === loanId);
+        if(!loan) return;
+        const newPaid = prompt(`Cuotas pagadas actuales: ${loan.paid}/${loan.months}\nIngrese nuevo número de cuotas pagadas:`, loan.paid);
+        if(newPaid !== null && !isNaN(parseInt(newPaid))) {
+            loan.paid = Math.min(Math.max(0, parseInt(newPaid)), loan.months);
+            if(loan.paid >= loan.months) loan.status = 'closed';
+            else if(loan.status === 'closed') loan.status = 'active';
+            updateAll();
+            showNotification(`✏️ Préstamo de ${loan.client} actualizado.`);
+        }
+    }
+    
+    function deleteLoan(loanId) {
+        const loan = loans.find(l => l.id === loanId);
+        if(confirm(`¿Eliminar préstamo de ${loan.client}? Esta acción es irreversible.`)) {
+            loans = loans.filter(l => l.id !== loanId);
+            updateAll();
+            showNotification(`🗑️ Préstamo de ${loan.client} eliminado.`);
+        }
+    }
+    
+    function viewDetails(loanId) {
+        const loan = loans.find(l => l.id === loanId);
+        if(!loan) return;
+        const cuota = monthlyPayment(loan.amount, loan.rate, loan.months);
+        const restante = loan.months - loan.paid;
+        alert(`📋 DETALLE DEL PRÉSTAMO\n\n👤 Cliente: ${loan.client}\n📞 Teléfono: ${loan.phone || 'No registrado'}\n🆔 ID: ${loan.id}\n💰 Monto: ${fmt(loan.amount)}\n📈 Tasa: ${loan.rate}% anual\n📅 Plazo: ${loan.months} meses\n💵 Cuota mensual: ${fmt(cuota)}\n✅ Cuotas pagadas: ${loan.paid}\n📌 Cuotas restantes: ${restante}\n📊 Estado: ${statusLabel[loan.status]}`);
+    }
+    
+    function renderLoans(list){
+        const body = document.getElementById('loansBody');
+        if(!list.length){ body.innerHTML='<tr><td colspan="8"><div class="empty-state">📭 No se encontraron préstamos.</div></td></tr>'; return; }
+        body.innerHTML = list.map(l => {
+            const mp = monthlyPayment(l.amount, l.rate, l.months);
+            const pct = Math.min(100, Math.round(l.paid/l.months*100));
+            return `<tr>
+                <td style="font-size:12px;color:var(--color-text-secondary)">${l.id}</td>
+                <td style="font-weight:600">${l.client}</td>
+                <td style="font-size:12px;color:var(--color-text-tertiary)">${l.phone || '—'}</td>
+                <td style="font-weight:500">${fmt(l.amount)}</td>
+                <td>${fmt(mp)}/mes</td>
+                <td style="min-width:110px"><div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:3px">${l.paid}/${l.months} cuotas</div><div class="progress-bar-bg"><div class="progress-bar" style="width:${pct}%"></div></div></td>
+                <td><span class="badge ${statusClass[l.status]}">${statusLabel[l.status]}</span></td>
+                <td style="white-space:nowrap">
+                    <button class="action-btn" onclick="viewDetails('${l.id}')">👁️ Ver</button>
+                    <button class="action-btn" onclick="recordPayment('${l.id}')">💰 Pago</button>
+                    <button class="action-btn" onclick="editLoan('${l.id}')">✏️ Editar</button>
+                    <button class="action-btn danger" onclick="deleteLoan('${l.id}')">🗑️</button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+    
+    function filterLoans(){
+        const q = document.getElementById('searchInput').value.toLowerCase();
+        const s = document.getElementById('statusFilter').value;
+        const filtered = loans.filter(l => (l.client.toLowerCase().includes(q) || l.id.toLowerCase().includes(q) || (l.phone && l.phone.includes(q))) && (!s || l.status===s));
+        renderLoans(filtered);
+    }
+    
+    function calcSimulation(){
+        const P = parseFloat(document.getElementById('simAmount').value)||0;
+        const r = parseFloat(document.getElementById('simRate').value)||0;
+        const n = parseInt(document.getElementById('simMonths').value)||1;
+        const type = document.getElementById('simType').value;
+        let cuota, totalPagar, totalInteres;
+        if(type==='frances'){
+            cuota = monthlyPayment(P,r,n);
+            totalPagar = cuota*n;
+            totalInteres = totalPagar-P;
+        } else {
+            const cap = P/n;
+            const mr=r/12/100;
+            cuota = cap + P*mr;
+            totalInteres = P*mr*n - cap*mr*(n*(n-1)/2);
+            totalPagar = P + totalInteres;
+        }
+        document.getElementById('simGrid').innerHTML = `
+            <div class="r-item"><div class="r-label">💵 Cuota mensual</div><div class="r-val">${fmt(cuota)}</div></div>
+            <div class="r-item"><div class="r-label">📈 Total intereses</div><div class="r-val">${fmt(totalInteres)}</div></div>
+            <div class="r-item"><div class="r-label">💰 Total a pagar</div><div class="r-val">${fmt(totalPagar)}</div></div>
+        `;
+    }
+    
+    function buildAmortTable(){
+        const P = parseFloat(document.getElementById('amAmount').value)||0;
+        const r = parseFloat(document.getElementById('amRate').value)||0;
+        const n = parseInt(document.getElementById('amMonths').value)||1;
+        const type = document.getElementById('amType').value;
+        const mr = r/12/100;
+        const body = document.getElementById('amortBody');
+        let rows = '';
+        let saldo = P;
+        const fixedCuota = monthlyPayment(P,r,n);
+        for(let i=1;i<=n;i++){
+            let interes, capital, cuota;
+            if(type==='frances'){
+                interes = saldo*mr;
+                capital = fixedCuota-interes;
+                cuota = fixedCuota;
+            } else {
+                capital = P/n;
+                interes = saldo*mr;
+                cuota = capital+interes;
+            }
+            saldo -= capital;
+            if(saldo<0) saldo=0;
+            rows += `<tr><td style="color:var(--color-text-secondary)">${i}</td><td>${fmt(capital)}</td><td style="color:#854F0B">${fmt(interes)}</td><td style="font-weight:600">${fmt(cuota)}</td><td>${fmt(saldo)}</td></tr>`;
+        }
+        body.innerHTML = rows;
+    }
+    
+    function exportToExcel() {
+        const exportData = loans.map(l => ({
+            ID: l.id, Cliente: l.client, Teléfono: l.phone || '', Monto: l.amount, Tasa: l.rate + '%',
+            Plazo: l.months + ' meses', Cuotas_Pagadas: l.paid, Estado: statusLabel[l.status]
+        }));
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Préstamos');
+        XLSX.writeFile(wb, `prestamos_${new Date().toISOString().split('T')[0]}.xlsx`);
+        showNotification('📁 Exportado a Excel correctamente');
+    }
+    
+    function openModal(){ document.getElementById('modalOverlay').classList.add('open'); }
+    function closeModal(){ document.getElementById('modalOverlay').classList.remove('open'); }
+    
+    function addLoan(){
+        const client = document.getElementById('newClient').value.trim();
+        const phone = document.getElementById('newPhone').value.trim();
+        const amount = parseFloat(document.getElementById('newAmount').value)||0;
+        const rate = parseFloat(document.getElementById('newRate').value)||0;
+        const months = parseInt(document.getElementById('newMonths').value)||0;
+        const status = document.getElementById('newStatus').value;
+        if(!client || amount<=0 || rate<=0 || months<=0){ showNotification('❌ Complete todos los campos correctamente', true); return; }
+        const newId = 'P-' + String(loans.length + 1).padStart(3,'0');
+        loans.unshift({id:newId, client, phone, amount, rate, months, paid:0, status});
+        document.getElementById('newClient').value = '';
+        document.getElementById('newPhone').value = '';
+        document.getElementById('newAmount').value = '';
+        document.getElementById('newRate').value = '';
+        document.getElementById('newMonths').value = '';
+        closeModal();
+        updateAll();
+        showNotification(`✅ Préstamo creado para ${client}`);
+    }
+    
+    function switchTab(tab){
+        document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+        const tabs = ['dashboard','loans','simulator','schedule'];
+        const idx = tabs.indexOf(tab);
+        document.querySelectorAll('.tab')[idx].classList.add('active');
+        document.getElementById(tab).classList.add('active');
+        if(tab==='simulator') calcSimulation();
+        if(tab==='schedule') buildAmortTable();
+        if(tab==='dashboard') setTimeout(() => updateCharts(), 100);
+    }
+    
+    function updateAll() {
+        updateMetrics();
+        filterLoans();
+    }
+    
+    // Inicialización
+    updateMetrics();
+    filterLoans();
+    calcSimulation();
+    buildAmortTable();
+</script>
+</body>
+</html>
